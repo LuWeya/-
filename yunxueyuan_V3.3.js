@@ -261,6 +261,7 @@
         }
         , play: function () {
             this.getVideo();
+            if (objVideo.playing == false) $("iframe#myFrame").contents().find("img.register-img")[0].click();
             this.myvideo.play();
             this.showProgress();
         }
@@ -685,6 +686,8 @@
         objURL.getCourseURLs();
 
     }
+
+
 
 
 
