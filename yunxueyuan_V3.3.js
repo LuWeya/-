@@ -261,7 +261,7 @@
         }
         , play: function () {
             this.getVideo();
-            if (objVideo.playing == false) $("iframe#myFrame").contents().find("img.register-img")[0].click();
+            if (objVideo.playing == false) $("iframe#myFrame").contents().find("button.videojs-referse-btn")[0].click();
             this.myvideo.play();
             this.showProgress();
         }
