@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         test
 // @namespace    http://tampermonkey.net/
-// @version      3.2-test
+// @version      3.3-test
 // @description  objURL/objHTML ready
 // @author       You
 // @match        https://learning.sinotruk.com/*
@@ -20,7 +20,7 @@
         , Responsetime: 5 // 打开新网页的时间，默认响应时间为10秒
         , review: false // 复习模式，完整挂机视频时长，默认关闭
         , drag: false // 当显示完成时，拖动进度条，默认开启
-        , autosave: false  // 自动读取和保存列表
+        , autosave: true  // 自动读取和保存列表
         , username: '' // 浏览器已记住密码可忽略
         , passwd: '' // 浏览器已记住密码可忽略
         , debug: true // 输出debug信息
@@ -35,8 +35,8 @@
             GM_notification({
                 title: GM_info.script.nameinfoText,
                 text: infoText,
-                timeout: 3000,
-                //highlight: true,
+                timeout: 3000, //- int- 通知多长时间后消失(可选，0 = 不消失)
+
             });
             debuglog("myalert: " + infoText);
         }
@@ -261,7 +261,10 @@
         }
         , play: function () {
             this.getVideo();
-            if (objVideo.playing == false) $("iframe#myFrame").contents().find("button.videojs-referse-btn")[0].click();
+            if (this.playing == false) {
+                $("iframe#myFrame").contents().find("button.videojs-referse-btn")[0].click();
+                $("iframe#myFrame").contents().find("img.register-img")[0].click();
+            }
             this.myvideo.play();
             this.showProgress();
         }
@@ -460,7 +463,10 @@
             var register = $("iframe#myFrame").contents().find("button.videojs-referse-btn")[0];
             if (!(register == undefined)) {
                 // 找到播放按钮，则点击播放
-                if (objVideo.playing == false) $("iframe#myFrame").contents().find("img.register-img")[0].click();
+                if (objVideo.playing == false) {
+                    $("iframe#myFrame").contents().find("button.videojs-referse-btn")[0].click();
+                    $("iframe#myFrame").contents().find("img.register-img")[0].click();
+                }
                 debuglog("getRegister:找到播放按钮, paly video");
                 return true;
             }
