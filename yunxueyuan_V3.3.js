@@ -1,11 +1,15 @@
 // ==UserScript==
-// @name         test
+// @name         云学院助手
 // @namespace    http://tampermonkey.net/
-// @version      3.3-test
+// @version      3.4
 // @description  objURL/objHTML ready
 // @author       You
 // @match        https://learning.sinotruk.com/*
 // @icon         https://learning.sinotruk.com/images/medal/medal-1.png
+// @grant        GM_registerMenuCommand
+// @grant        GM_unregisterMenuCommand
+// @grant        GM_setValue
+// @grant        GM_getValue
 // @grant        GM_addStyle
 // @grant        GM_notification
 // ==/UserScript==
@@ -18,14 +22,60 @@
     var setting = {
         intervalTime: 30 // 循环间隔30s
         , Responsetime: 5 // 打开新网页的时间，默认响应时间为10秒
-        , review: false // 复习模式，完整挂机视频时长，默认关闭
-        , drag: false // 当显示完成时，拖动进度条，默认开启
-        , autosave: true  // 自动读取和保存列表
         , username: '' // 浏览器已记住密码可忽略
         , passwd: '' // 浏览器已记住密码可忽略
-        , debug: true // 输出debug信息
-        , keepLogin: true //自动登入
     }
+    //  主键， 显示值， 通知显示值，主键默认值
+    var menu_ALL = [
+        ['keepLogin', '自动登入', '自动登入', true],
+        ['autosave', '自动读取和保存列表', '自动读取和保存列表', true],
+        ['drag', '快速模式（当显示完成时，拖动进度条）', '当显示完成时，拖动进度条', false],
+        ['debug', '输出debug信息', '输出debug信息', true],
+        ['review', '复习(刷学时)模式', '复习模式', false]
+    ];
+    var menu_ID = [];
+    for (let i = 0; i < menu_ALL.length; i++) { // 如果读取到的值为 null 就写入默认值
+        if (GM_getValue(menu_ALL[i][0]) == null) { GM_setValue(menu_ALL[i][0], menu_ALL[i][3]) };
+    }
+    registerMenuCommand();
+
+    // 注册脚本菜单
+    function registerMenuCommand() {
+        // 移除菜单
+        for (let i = 0; i < menu_ID.length; i++) {
+            GM_unregisterMenuCommand(menu_ID[i]);
+        }
+        for (let i = 0; i < menu_ALL.length; i++) { // 循环注册脚本菜单
+            menu_ALL[i][3] = GM_getValue(menu_ALL[i][0]);
+            menu_ID[i] = GM_registerMenuCommand(`${menu_ALL[i][3] ? '✅' : '❌'} ${menu_ALL[i][1]}`, function () { menu_switch(`${menu_ALL[i][3]}`, `${menu_ALL[i][0]}`, `${menu_ALL[i][2]}`) });
+        }
+    }
+
+
+    // 菜单开关
+    function menu_switch(menu_status, Name, Tips) {
+        if (menu_status == 'true') {
+            GM_setValue(`${Name}`, false);
+            GM_notification({ text: `已关闭 [${Tips}] 功能\n（点击刷新网页后生效）`, timeout: 3500, onclick: function () { location.reload(); } });
+        } else {
+            GM_setValue(`${Name}`, true);
+            GM_notification({ text: `已开启 [${Tips}] 功能\n（点击刷新网页后生效）`, timeout: 3500, onclick: function () { location.reload(); } });
+        }
+        registerMenuCommand(); // 重新注册脚本菜单
+        console.log(menu_status, Name, Tips);
+    };
+
+
+    // 返回菜单值
+    function menu_value(menuName) {
+        for (let menu of menu_ALL) {
+            if (menu[0] == menuName) {
+                return menu[3]
+            }
+        }
+    }
+
+
     // 函数：显示通知
     function myalert(infoText) {
         if (typeof (GM_notification) == 'undefined') {
@@ -43,7 +93,7 @@
         return;
     }
     function debuglog(infoText) {
-        if (setting.debug) console.log(infoText);
+        if (menu_value('debug')) console.log(infoText);
     }
     // 延时活动管理
     var objAct = {
@@ -128,6 +178,7 @@
         }
         , progress: function () {
             myalert("====播放进度：" + (this.courseN + 1) + "/" + this.aurls.length + " ====");
+            console.log("====播放进度：" + (this.courseN + 1) + "/" + this.aurls.length + " ====");
         }
         , getCourseURLs: function () {
             // 函数：校验URL是否重复
@@ -156,7 +207,7 @@
             // 遍历项列表，不重复的添加到sURLs里面，并统计
             Array.from(olist).forEach(item => {
                 oanromal = $(item).find("a.normal")[0];
-                if (setting.review) {
+                if (menu_value('review')) {
                     // 复习模式，所有链接均可
                     if (isURLsame(oanromal.href, this.aurls)) {
                         this.add(oanromal.href);
@@ -182,7 +233,7 @@
             if (repeat > 0) {
                 outputString += repeat + "个视频链接重复，"
             }
-            if (setting.review) {
+            if (menu_value('review')) {
                 outputString += "已添加" + k + "个视频（已完成+未完成），共计" + objURL.count() + "个视频。";
             }
             else {
@@ -220,7 +271,7 @@
             // 保存aurl和courseN到local storage
             window.localStorage.setItem('courseN', this.courseN);
             window.localStorage.setItem('aurls', JSON.stringify(this.aurls));
-            myalert("保存到网页");
+            debuglog("保存到网页");
         }
         , readFromLocalStorage: function () {
             // 从local storage读取aurl和courseN
@@ -272,7 +323,7 @@
             this.myvideo.muted = true;//静音
         }
         , showProgress: function () {
-            console.log("Video进度：" + (this.myvideo.currentTime / this.myvideo.duration * 100).toFixed(3) + '%');
+            debuglog("Video进度：" + (this.myvideo.currentTime / this.myvideo.duration * 100).toFixed(3) + '%');
         }
         , removeWaterMark: function () {
             myFrame.contentWindow.$("div.vjs-barrage").remove(); //移除浮窗
@@ -498,7 +549,7 @@
             // 获取到List再继续
             if (state) {
                 // 是否需要学习
-                if (setting.review) {// 需要复习则从第一个开始
+                if (menu_value('review')) {// 需要复习则从第一个开始
                     objList.mylist[0].click(); // 点击第一个视频项DL
                     objList.getList();
                 }
@@ -580,7 +631,7 @@
             }
             else {
                 // 最后一个，
-                if (setting.autosave) {
+                if (menu_value('autosave')) {
                     objURL.saveToLocalStorage();
                     console.log("aurls和courseN保存到网页。");
                 }
@@ -601,12 +652,12 @@
                 myalert("列表已全部完成。");
                 return;
             }
-
-            // autosave: 每5个输出一次列表
-            if (setting.autosave && objURL.courseN % 5 == 4) {
-                objURL.saveToLocalStorage();
-                console.log("aurls和courseN保存到网页。");
-            }
+            objURL.saveToLocalStorage();
+            // // autosave: 每5个输出一次列表
+            // if (menu_value('autosave') && objURL.courseN % 5 == 4) {
+            //     objURL.saveToLocalStorage();
+            //     console.log("aurls和courseN保存到网页。");
+            // }
         }
         , lastHTML: function () {
             // 清除所有循环
@@ -658,7 +709,7 @@
                     }
                     else {
                         // 拖动进度
-                        if (setting.review || !setting.drag) {
+                        if (menu_value('review') || !menu_value('drag')) {
                             objVideo.play();
                             debuglog("setTimer:拖动进度，play");
                         }
@@ -699,7 +750,7 @@
 
     // auto Read URL
     function initURL() {
-        if (setting.autosave == true) {
+        if (menu_value('autosave') == true) {
             // 读取网页内保存的。
             objURL.readFromLocalStorage();
             // 关闭网页前保存。
@@ -725,7 +776,7 @@
     const localurl = window.location.href; //当前地址
     // 添加按钮
     if (localurl.indexOf('/oauth/#login') != -1) { // 登入页面
-        if (setting.keepLogin) {
+        if (menu_value('keepLogin')) {
             setTimeout(() => {
                 if (!($("input[id$='username']")[0].value && $("input[id$='pword']")[0].value)) {
                     $("input[id$='username']")[0].value = setting.username;
